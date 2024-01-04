@@ -63,7 +63,7 @@ for article in articles:
     images = article.find_all('img')
     
     # Check if the prices list has at least two elements before accessing them
-    if len(prices) >= 2:
+    if len(prices) >= 2 and len(images) >= 2:
         wine_price_1 = prices[0].text.strip().replace('DKK', '').strip()
         wine_price_6 = prices[1].text.strip().replace('DKK', '').strip()
         
