@@ -34,3 +34,8 @@ jobs:
     - name: Run wine.py
       run: |
         python wine.py
+        git config --global user.email "github-actions@github.com"
+        git config --global user.name "GitHub Actions"
+        git add wine_data.db
+        git commit -m "Add output file from wine.py"
+        git push origin main
