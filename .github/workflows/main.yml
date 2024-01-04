@@ -22,9 +22,9 @@ jobs:
       run: |
         pip install selenium
 
-    - name: Install BS4 & SQLite3
+    - name: Install BS4
       run: |
-        pip install beautifulsoup4 sqlite3
+        pip install beautifulsoup4
         
     - name: Download Chromedriver
       run: |
