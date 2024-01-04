@@ -1,0 +1,28 @@
+name: Install Chromium, Chromium-driver, and Selenium
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  install-packages:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Update apt-get and install Chromium & Chromium-driver
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser chromium-chromedriver
+        
+    - name: Install Selenium
+      run: |
+        pip install selenium
+        
+    - name: Download Chromedriver
+      run: |
+        wget https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip
+        unzip chromedriver_linux64.zip
