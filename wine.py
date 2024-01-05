@@ -27,7 +27,7 @@ SCROLL_PAUSE_TIME = 3  # Increase pause time
 PRODUCT_HEIGHT = 300  # Adjust this value if needed
 
 # Arbitrarily set a high number for num_scrolls to ensure reaching the end
-num_scrolls = 2500 
+num_scrolls = 3500 
 
 for _ in range(num_scrolls):
     driver.execute_script(f"window.scrollBy(0, {PRODUCT_HEIGHT});")
