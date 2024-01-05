@@ -73,6 +73,8 @@ for article in articles:
         # Check if the wine exists in the database
         cursor.execute('SELECT * FROM wines WHERE name = ?', (wine_name,))
         existing_wine = cursor.fetchone()
+
+        print(wine_name)
         
         if existing_wine:
             # Update prices if the wine already exists
