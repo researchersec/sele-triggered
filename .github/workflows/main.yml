@@ -1,9 +1,7 @@
 name: Install Chromium, Chromium-driver, and Selenium
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   install-packages:
