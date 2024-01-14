@@ -12,89 +12,98 @@ from bs4 import BeautifulSoup
 import time
 import sqlite3
 
-service = Service(executable_path=r'chromedriver')
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')
-options.add_argument('--no-sandbox')
+def scrape_website(url):
+    service = Service(executable_path=r'chromedriver')
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
 
-driver = webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.get(url)
 
-url = "https://www.supervin.dk/vin/rodvin?Products%5BrefinementList%5D%5Bfacet_types%5D%5B0%5D=R%C3%B8dvin"
+    SCROLL_PAUSE_TIME = 3
+    PRODUCT_HEIGHT = 300
+    prev_height = 0
 
-driver.get(url)
+    while True:
+        driver.execute_script(f"window.scrollBy(0, {PRODUCT_HEIGHT});")
+        time.sleep(SCROLL_PAUSE_TIME)
 
-SCROLL_PAUSE_TIME = 3  # Increase pause time
-PRODUCT_HEIGHT = 300  # Adjust this value if needed
-
-# Arbitrarily set a high number for num_scrolls to ensure reaching the end
-num_scrolls = 3500 
-
-for _ in range(num_scrolls):
-    driver.execute_script(f"window.scrollBy(0, {PRODUCT_HEIGHT});")
-    time.sleep(SCROLL_PAUSE_TIME)
-
-soup = BeautifulSoup(driver.page_source, 'html.parser')
-articles = soup.find_all('article', class_='col-12 col-sm-6 col-lg-4')
-
-# Create or connect to a SQLite database file
-conn = sqlite3.connect('wine_data.db')
-cursor = conn.cursor()
-
-# Create a table for wines if it doesn't exist
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS wines (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        price_1 TEXT,
-        price_6 TEXT,
-        image_href TEXT,
-        country TEXT
-    )
-''')
-
-
-for article in articles:
-    wine_name = article.find('h4').text.strip() if article.find('h4') else None
-    
-    # Find all spans with class 'price' within the article
-    prices = article.find_all('span', class_='price')
-
-    # Find all img tags within the article
-    images = article.find_all('img')
-    
-    # Check if the prices list has at least two elements before accessing them
-    if len(prices) >= 2 and len(images) >= 2:
-        wine_price_1 = prices[0].text.strip().replace('DKK', '').strip()
-        wine_price_6 = prices[1].text.strip().replace('DKK', '').strip()
+        new_height = driver.execute_script("return Math.max(document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight);")
         
-        img_href_1 = images[0]['src'] if 'src' in images[0].attrs else None
-        img_alt_2 = images[1]['alt'] if 'alt' in images[1].attrs else None
+        if new_height == prev_height:
+            break
+        prev_height = new_height
 
-        # Check if the wine exists in the database
-        cursor.execute('SELECT * FROM wines WHERE name = ?', (wine_name,))
-        existing_wine = cursor.fetchone()
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    articles = soup.find_all('article', class_='col-12 col-sm-6 col-lg-4')
 
-        print(wine_name)
-        
-        if existing_wine:
-            # Update prices if the wine already exists
-            cursor.execute('''
-                UPDATE wines
-                SET price_1 = ?, price_6 = ?, image_href = ?, country = ?
-                WHERE id = ?
-            ''', (wine_price_1, wine_price_6, img_href_1, img_alt_2, existing_wine[0]))
-        else:
-            # Insert data into the 'wines' table if the wine doesn't exist
-            cursor.execute('''
-                INSERT INTO wines (name, price_1, price_6, image_href, country)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (wine_name, wine_price_1, wine_price_6, img_href_1, img_alt_2))
-            
-            wine_id = cursor.lastrowid  # Get the ID of the inserted wine
-            
+    driver.quit()
+    return articles
 
-# Commit changes and close connection
-conn.commit()
-conn.close()
+def create_or_connect_database():
+    conn = sqlite3.connect('wine_data.db')
+    cursor = conn.cursor()
 
-driver.quit()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS names (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            wine_link TEXT
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS prices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            price_1 TEXT,
+            price_6 TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            name_id INTEGER,
+            FOREIGN KEY (name_id) REFERENCES names(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            review TEXT,
+            name_id INTEGER,
+            FOREIGN KEY (name_id) REFERENCES names(id)
+        )
+    ''')
+
+    return cursor, conn
+
+def update_or_insert_data(cursor, conn, articles):
+    for article in articles:
+        wine_name = article.find('h4').text.strip() if article.find('h4') else None
+        prices = article.find_all('span', class_='price')
+        wine_link = article.find('a')['href'].strip() if article.find('a') and 'href' in article.find('a').attrs else None
+
+        if len(prices) >= 2:
+            wine_price_1 = prices[0].text.strip().replace('DKK', '').strip()
+            wine_price_6 = prices[1].text.strip().replace('DKK', '').strip()
+
+            # Insert into names table
+            cursor.execute('INSERT INTO names (name, wine_link) VALUES (?, ?)', (wine_name, wine_link))
+            name_id = cursor.lastrowid  # Get the last inserted row id (name_id)
+
+            # Insert into prices table with foreign key reference
+            cursor.execute('INSERT INTO prices (price_1, price_6, name_id) VALUES (?, ?, ?)', (wine_price_1, wine_price_6, name_id))
+
+            # Insert into reviews table with foreign key reference
+            cursor.execute('INSERT INTO reviews (review, name_id) VALUES (?, ?)', ('', name_id))
+
+    conn.commit()
+    conn.close()
+
+def main():
+    url = "https://www.supervin.dk/vin/rodvin?Products%5BrefinementList%5D%5Bfacet_types%5D%5B0%5D=R%C3%B8dvin"
+    articles = scrape_website(url)
+    cursor, conn = create_or_connect_database()
+    update_or_insert_data(cursor, conn, articles)
+
+if __name__ == "__main__":
+    main()
+
