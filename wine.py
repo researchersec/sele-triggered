@@ -35,7 +35,7 @@ def main():
     url = "https://www.supervin.dk/vin/rodvin?Products%5BrefinementList%5D%5Bfacet_types%5D%5B0%5D=R%C3%B8dvin"
 
     # Experiment with different numbers of scrolls
-    for num_scrolls in range(5, 2500, 5):
+    for num_scrolls in range(5, 100, 5):
         articles = scrape_website(url, num_scrolls)
         print(f"Number of scrolls: {num_scrolls}, Number of wines: {len(articles)}")
 
