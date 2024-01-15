@@ -58,7 +58,7 @@ while True:
 # Get the final height of the loaded page
 final_page_height = driver.execute_script("return Math.max( document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight );")
 
-print(f"The height of the loaded page is: {final_page_height} pixels")
+print(f"The height of the loaded page is: {final_page_height} pixels. Total Wines: {len(articles)}")
 
 # Close the browser
 driver.quit()
