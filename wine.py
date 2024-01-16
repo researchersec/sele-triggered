@@ -6,7 +6,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
-import psutil
 
 url = "https://www.supervin.dk/vin/rodvin?Products%5BrefinementList%5D%5Bfacet_types%5D%5B0%5D=R%C3%B8dvin"
 
@@ -29,10 +28,17 @@ def is_loading():
 
 # Scroll until no more content is loaded
 while True:
+    # Get the HTML content of the page
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    articles = soup.find_all('article', class_='col-12 col-sm-6 col-lg-4')
+
+    # Print the number of articles
+    print(f"Number of articles after scroll: {len(articles)}")
+
     # Scroll to the end of the page using "END" key
     print("Scrolling to the end of the page...")
     driver.find_element(By.TAG_NAME, 'body').send_keys(Keys.END)
-    
+
     # Wait for a short time to let the content load after scrolling to the end
     driver.implicitly_wait(2)
 
@@ -46,14 +52,6 @@ while True:
     # Check if more content is still loading
     if not is_loading():
         break
-
-    # Get the HTML content of the page
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    articles = soup.find_all('article', class_='col-12 col-sm-6 col-lg-4')
-
-    # Print the number of articles and memory usage
-    process = psutil.Process()
-    print(f"Number of articles after scroll: {len(articles)}, Memory Usage: {process.memory_info().rss / 1024 / 1024} MB")
 
 # Get the final height of the loaded page
 final_page_height = driver.execute_script("return Math.max( document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight );")
